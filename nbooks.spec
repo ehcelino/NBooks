@@ -4,6 +4,8 @@
 block_cipher = None
 
 files = [
+    ('README.md', '.'),
+    ('LICENSE.md', '.'),
     ('main.ui', '.'),
     ('help.html', '.'),
     ('notebooks.db', '.'),

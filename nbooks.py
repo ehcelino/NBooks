@@ -24,7 +24,7 @@ from PyQt5.QtCore import (QItemSelectionModel, QCoreApplication, Qt, QObject, py
                           QSize, QPoint, QFile, QTextStream)
 from PyQt5.QtGui import (QIcon, QFont, QStandardItemModel, QStandardItem, QKeySequence,
                          QColorConstants, QColor, QTextList, QTextListFormat, QTextCursor, QPalette,
-                         QMouseEvent)
+                         QMouseEvent, QClipboard, QCursor, QTextCharFormat)
 from PyQt5.uic import loadUi
 from PyQt5.QtPrintSupport import QPrintDialog, QPrintPreviewDialog, QPrinter
 import sys, os, sqlite3
@@ -47,6 +47,11 @@ def splitext(p):
 QCoreApplication.setOrganizationName('Empty')
 QCoreApplication.setOrganizationDomain('empty.empty.com')
 QCoreApplication.setApplicationName('nome_do_programa')
+
+# QCoreApplication.setOrganizationName('Section')
+# QCoreApplication.setOrganizationDomain('section.operations.com')
+# QCoreApplication.setApplicationName('NBooks')  # test00
+
 
 app = QtWidgets.QApplication(sys.argv)
 app.setStyle('Fusion')
@@ -256,8 +261,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     iconpath = None
     old_item = None
     fonte_padrao = QFont('Calibri', 12)
+    codigo_fonte = QFont('Jetbrains Mono', 10)
     inicio = True
     systray = False
+    paste_html = False
+    char_format = QTextCharFormat()
+    char_format_code = QTextCharFormat()
+    char_format_normal = QTextCharFormat()
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         super().setupUi(self)
@@ -273,6 +283,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         print(self.db_file)
 
         self.setWindowTitle(f'NBooks ({self.db_file})')
+
+        # Padrão de caractere, normal e código
+        self.char_format.setFont(self.fonte_padrao)
+        self.char_format.setForeground(QColor('black'))
+        # char_format = QTextCharFormat()
+        # char_format.setForeground(Qt.blue)
+        self.char_format.setFontWeight(QFont.Normal)
+        self.char_format_code.setFont(self.codigo_fonte)
+        self.char_format_code.setForeground(QColor(97,132,87))
+        self.char_format_code.setFontWeight(QFont.Normal)
 
         # self.palette = self.palette()
 
@@ -440,6 +460,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.toolbar_editar.addAction(self.paste_action)
         menu_editar.addAction(self.paste_action)
         # ###################################################
+        self.paste_mode_action = QAction(QIcon(os.path.join(basedir, 'icons', 'paste.png')),
+                                         "Colar como HTML", self)
+        self.paste_mode_action.setStatusTip("Colar como HTML")
+        # self.paste_mode_action.setShortcut(QKeySequence.Paste)
+        self.paste_mode_action.triggered.connect(self.paste_as_html)
+        # self.toolbar_editar.addAction(self.paste_mode_action)
+        menu_editar.addAction(self.paste_mode_action)
+        # ###################################################
+        self.reset_char_action = QAction(QIcon(os.path.join(basedir, 'icons', 'default_char.png')),
+                                         "Resetar caractere padrão", self)
+        self.reset_char_action.setStatusTip("Resetar caractere padrão")
+        # self.paste_mode_action.setShortcut(QKeySequence.Paste)
+        self.reset_char_action.triggered.connect(self.reset_default_char)
+        # self.toolbar_editar.addAction(self.paste_mode_action)
+        menu_editar.addAction(self.reset_char_action)
+        # ###################################################
         menu_editar.addSeparator()
         # ###################################################
         select_action = QAction(QIcon(os.path.join('icons', 'all.png')), "Selecionar tudo", self)
@@ -492,12 +528,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         menu_formatar.addAction(self.highlight_action)
         self.highlight_action.setShortcut(QKeySequence('Ctrl+R'))
         # ###################################################
-        self.codigo_fonte = QFont('Jetbrains Mono', 10)
+
+        # self.codigo_fonte = QFont('Jetbrains Mono', 10)
         self.codigo_action = QAction(QIcon(os.path.join(basedir, 'icons', 'code.png')), "Código", self)
         self.codigo_action.setStatusTip("Código (Ctrl+K)")
         self.codigo_action.setCheckable(True)
+        # self.codigo_action.toggled.connect(
+        #     lambda x: self.txtEditor.setCurrentFont(self.codigo_fonte if x else self.fonte_padrao))
         self.codigo_action.toggled.connect(
-            lambda x: self.txtEditor.setCurrentFont(self.codigo_fonte if x else self.fonte_padrao))
+            lambda x: self.txtEditor.setCurrentCharFormat(self.char_format_code if x else self.char_format))
         self.toolbar_formatar.addAction(self.codigo_action)
         menu_formatar.addAction(self.codigo_action)
         self.codigo_action.setShortcut(QKeySequence('Ctrl+K'))
@@ -835,6 +874,33 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.tray.setVisible(False)
             app.setQuitOnLastWindowClosed(True)
 
+    def reset_default_char(self):
+        self.txtEditor.setCurrentCharFormat(self.char_format)
+
+
+    def paste_as_html(self):
+        """
+        Ativa a colagem em modo html no programa
+        :return:
+        """
+        # if not self.paste_html:
+        #     print('ativando colagem em html')
+        #     self.txtEditor.setAcceptRichText(True)
+        #     self.paste_html = True
+        # else:
+        #     print('desativando colagem em html')
+        #     self.txtEditor.setAcceptRichText(False)
+        #     self.paste_html = False
+        before_char = self.txtEditor.currentCharFormat()
+        before_font = self.txtEditor.currentFont()
+        self.txtEditor.setAcceptRichText(True)
+        self.txtEditor.paste()
+        self.txtEditor.setAcceptRichText(False)
+        # self.txtEditor.setCurrentFont(before_font)
+        # self.txtEditor.setCurrentCharFormat(before_char)
+        self.txtEditor.setCurrentCharFormat(self.char_format)
+        # newCursor = QTextCursor(self.txtEditor.document())
+        # self.txtEditor.setTextCursor(newCursor)
     # #################################################################################
     # Menu de arquivos recentes
     # #################################################################################
@@ -1695,6 +1761,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         if self.model != None:
             self.model.setRowCount(0)
+        if not os.path.exists(os.path.join(basedir, 'db', 'database.nbook')):
+            self.db_file = os.path.join('db', 'database.nbook')
+            settings.setValue('database', self.db_file)
+            self.create_database()
         if self.db_file == None or self.db_file == '':
             if os.path.exists(os.path.join(basedir, 'db', 'database.nbook')):
                 self.db_file = os.path.join('db', 'database.nbook')

@@ -8,7 +8,7 @@ cada um contendo notas organizadas em estilo de árvore. Seu uso é bem simples,
 No meu caso, eu criei o software para me auxiliar no estudo de programação, guardando snippets de código e
 anotações para referência.
 
-![](.\imagem.png)
+![](imagem.png)
 
 #### Funções:
 * Vários blocos de notas;
