@@ -28,7 +28,6 @@ from PyQt5.QtGui import (QIcon, QFont, QStandardItemModel, QStandardItem, QKeySe
 from PyQt5.uic import loadUi
 from PyQt5.QtPrintSupport import QPrintDialog, QPrintPreviewDialog, QPrinter
 import sys, os, sqlite3
-import win32api
 import winreg
 
 from main import Ui_MainWindow
@@ -947,9 +946,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #     filenames = [f"foo {counter}"]
     #     for filename in filenames:
     #         self.add_recent_filename(filename)
-
-    import win32api
-    import winreg
 
     def is_font_installed(self, font_name):
         try:
