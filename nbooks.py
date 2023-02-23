@@ -28,6 +28,9 @@ from PyQt5.QtGui import (QIcon, QFont, QStandardItemModel, QStandardItem, QKeySe
 from PyQt5.uic import loadUi
 from PyQt5.QtPrintSupport import QPrintDialog, QPrintPreviewDialog, QPrinter
 import sys, os, sqlite3
+import win32api
+import winreg
+
 from main import Ui_MainWindow
 
 try:
@@ -44,9 +47,9 @@ HTML_EXTENSIONS = ['.htm', '.html']
 def splitext(p):
     return os.path.splitext(p)[1].lower()
 
-QCoreApplication.setOrganizationName('Empty')
-QCoreApplication.setOrganizationDomain('empty.empty.com')
-QCoreApplication.setApplicationName('nome_do_programa')
+QCoreApplication.setOrganizationName('Nada')
+QCoreApplication.setOrganizationDomain('Nada.empty.com')
+QCoreApplication.setApplicationName('programa')
 
 # QCoreApplication.setOrganizationName('Section')
 # QCoreApplication.setOrganizationDomain('section.operations.com')
@@ -261,7 +264,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     iconpath = None
     old_item = None
     fonte_padrao = QFont('Calibri', 12)
+    # codigo_fonte = QFont('Jetbrains Mono', 10)
     codigo_fonte = QFont('Jetbrains Mono', 10)
+    codigo_fonte_2 = QFont('Courier new', 10)
     inicio = True
     systray = False
     paste_html = False
@@ -285,6 +290,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setWindowTitle(f'NBooks ({self.db_file})')
 
         # Padrão de caractere, normal e código
+        print(self.is_font_installed('JetBrains Mono'))
+        if self.is_font_installed('JetBrains Mono'):
+            self.char_format_code.setFont(self.codigo_fonte)
+        else:
+            self.char_format_code.setFont(self.codigo_fonte_2)
+
         self.char_format.setFont(self.fonte_padrao)
         self.char_format.setForeground(QColor('black'))
         # char_format = QTextCharFormat()
@@ -613,7 +624,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.txtEditor.cursorPositionChanged.connect(self.update_format)  # com o teclado
         # self.txtEditor.textChanged.connect(self.update_format)  # <----------- TENTATIVA
         # self.textEdit.selectionChanged.connect(self.text_changed)
-        self.txtEditor.textChanged.connect(self.text_changed)
+        # self.txtEditor.textChanged.connect(self.text_changed)
         # self.txtEditor.selectionChanged.connect(self.documentWasModified)
         # self.txtEditor.textChanged.connect(self.documentWasModified)
 
@@ -637,7 +648,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.selection_model = self.treLista.selectionModel()
         self.selection_model.selectionChanged.connect(self.read_content)
         # para salvar na mudança de item na lista. desnecessário caso esteja salvando por mudança no textedit.
-        self.treLista.selectionModel().selectionChanged.connect(self.save_current)
+        # self.treLista.selectionModel().selectionChanged.connect(self.save_current)
 
         # Janelas
         # Janela novo item
@@ -936,6 +947,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #     filenames = [f"foo {counter}"]
     #     for filename in filenames:
     #         self.add_recent_filename(filename)
+
+    import win32api
+    import winreg
+
+    def is_font_installed(self, font_name):
+        try:
+            # Check HKEY_LOCAL_MACHINE
+            font_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts",
+                                      0, winreg.KEY_READ)
+            for i in range(winreg.QueryInfoKey(font_key)[0]):
+                font_value = winreg.EnumValue(font_key, i)[0]
+                if font_name.lower() in font_value.lower():
+                    winreg.CloseKey(font_key)
+                    return True
+            winreg.CloseKey(font_key)
+
+            # Check HKEY_CURRENT_USER
+            font_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts")
+            for i in range(winreg.QueryInfoKey(font_key)[1]):
+                font_value = winreg.EnumValue(font_key, i)[0]
+                if font_name.lower() in font_value.lower():
+                    winreg.CloseKey(font_key)
+                    return True
+            winreg.CloseKey(font_key)
+
+            return False
+        except WindowsError:
+            return False
 
     def update_recent_menu(self):
         """
@@ -1811,6 +1850,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         Lê o texto armazenado no banco de dados.
         :return:
         """
+        self.statusbar.showMessage('')
         childidx = None
         # self.txtKeywords.setText('')
         if not self.search_mode:
