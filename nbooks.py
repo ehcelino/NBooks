@@ -626,6 +626,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.treLista.clicked.connect(self.update_format)  # <------------- TENTATIVA
         # self.treLista.clicked.connect(lambda: self.status.showMessage(''))
 
+
         # Configurações dos modelos
         self.model = QStandardItemModel()
         # self.model.dataChanged.connect(self.on_dataChanged)
@@ -635,6 +636,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.treLista.setModel(self.filter_proxy_model)
         self.selection_model = self.treLista.selectionModel()
         self.selection_model.selectionChanged.connect(self.read_content)
+        # para salvar na mudança de item na lista. desnecessário caso esteja salvando por mudança no textedit.
+        self.treLista.selectionModel().selectionChanged.connect(self.save_current)
 
         # Janelas
         # Janela novo item
@@ -1176,14 +1179,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # assets = self.treeView.model().sourceModel().getSelectedItems(selection_x)
             item = self.treLista.model().sourceModel().itemFromIndex(selection_x[0])
             if item.parent() != None:
-                if item != self.old_item:
-                    self.changed = 0
-                    self.old_item = item
-                else:
-                    self.changed = self.changed + 1
-                    if self.changed >= 10:
+                # if item != self.old_item:
+                #     self.changed = 0
+                #     self.old_item = item
+                # else:
+                #     self.changed = self.changed + 1
+                #     if self.changed >= 10:
                         self.save_current()
-                        self.changed = 0
+                        # self.changed = 0
 
     # #################################################################################
     # Funções relacionadas à treeView
