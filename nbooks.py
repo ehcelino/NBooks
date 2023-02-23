@@ -637,6 +637,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.treLista.clicked.connect(lambda: self.status.showMessage(''))
 
 
+
         # Configurações dos modelos
         self.model = QStandardItemModel()
         # self.model.dataChanged.connect(self.on_dataChanged)
@@ -1835,6 +1836,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     else:
                         apchild = QStandardItem(QIcon(os.path.join(basedir, 'icons', icon2)), child)
                     apchild.setData(index2)
+                    apchild.setToolTip(child)
                     parent_item.appendRow(apchild)
 
     # #################################################################################
