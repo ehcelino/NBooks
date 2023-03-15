@@ -1552,6 +1552,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.opening_database(result)
         self.open_db = result
         self.openb.txtArquivo.setText(result)
+        if "\\" in result:
+            tmp_filename = result.split("\\")
+            filename = tmp_filename[-1]
+        else:
+            filename = result
+        filename = filename.split(".",1)[0]
+        self.openb.txtNome.setText(filename)
 
     def open_notebook(self):
         """
@@ -1579,9 +1586,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             msgbox = QMessageBox()
             msgbox.setWindowTitle('Atenção')
-            msgbox.setText('Você não selecionou um ícone para o notebook.')
+            msgbox.setText('Você não selecionou um ícone para o bloco de notas.')
             sim = msgbox.addButton('Ok', QMessageBox.YesRole)
             msgbox.exec()
+            self.jan_openb()
 
     def notebook_delete(self):
         """
