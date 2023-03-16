@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>292</width>
+    <height>126</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string/>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QPushButton[flat=&quot;true&quot;] { border: 1px rgb(55, 71, 82) }
+QPushButton[flat=&quot;true&quot;]:hover { background-color: rgb(55, 71, 82) }
+QPushButton:checked { background-color:  rgb(55, 71, 82) }</string>
+  </property>
+  <widget class="QLabel" name="label_3">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>10</y>
+     <width>61</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>Atenção</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="btnDescartar">
+   <property name="geometry">
+    <rect>
+     <x>150</x>
+     <y>80</y>
+     <width>131</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Descartar alterações</string>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../icons/delete.png</normaloff>../icons/delete.png</iconset>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="btnSalvar">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>80</y>
+     <width>131</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Salvar alterações</string>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../icons/disk.png</normaloff>../icons/disk.png</iconset>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_4">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>30</y>
+     <width>251</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Você não salvou suas alterações na nota anterior. Deseja salvar estas alterações ou abandoná-las?</string>
+   </property>
+   <property name="wordWrap">
+    <bool>true</bool>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

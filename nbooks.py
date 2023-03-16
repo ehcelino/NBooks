@@ -16,6 +16,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+"""
+todo quando muda de bloco de notas, se não foi salva a modificação da nota, ele não salva.
+"""
+
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtWidgets import (QMainWindow, QToolBar, QAction, QTextEdit, QAbstractItemView, QWidget,
                               QMessageBox, QMenu, QFileDialog, QSystemTrayIcon, QDesktopWidget,
@@ -237,7 +241,20 @@ class JanelaNbook(QWidget):
             self.setPalette(lightpalette)
         # self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.window().setWindowIcon(QIcon(os.path.join(basedir, 'icons', 'icon.png')))
-        
+
+
+# Classe da janela de confirmação
+class JanelaConfirm(QWidget):
+    def __init__(self):
+        super().__init__()
+        loadUi(os.path.join(basedir, 'ui', 'confirmacao.ui'), self)
+        theme = settings.value('theme', 'light')
+        if theme == 'dark':
+            self.setPalette(darkpalette)
+        else:
+            self.setPalette(lightpalette)
+        # self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.window().setWindowIcon(QIcon(os.path.join(basedir, 'icons', 'icon.png')))
 
 # Classe da janela ajuda
 class JanelaHelp(QWidget):
@@ -272,6 +289,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     char_format = QTextCharFormat()
     char_format_code = QTextCharFormat()
     char_format_normal = QTextCharFormat()
+    loaded = True
+    previous_item = None
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         super().setupUi(self)
@@ -625,7 +644,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.textEdit.selectionChanged.connect(self.text_changed)
         # self.txtEditor.textChanged.connect(self.text_changed)
         # self.txtEditor.selectionChanged.connect(self.documentWasModified)
-        # self.txtEditor.textChanged.connect(self.documentWasModified)
+        self.txtEditor.textChanged.connect(self.not_saved)
+
 
         # Configuração da árvore
         self.treLista.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -646,7 +666,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.filter_proxy_model.setFilterCaseSensitivity(Qt.CaseInsensitive)
         self.treLista.setModel(self.filter_proxy_model)
         self.selection_model = self.treLista.selectionModel()
-        self.selection_model.selectionChanged.connect(self.read_content)
+        self.selection_model.selectionChanged.connect(self.confirm_save)
         # para salvar na mudança de item na lista. desnecessário caso esteja salvando por mudança no textedit.
         # self.treLista.selectionModel().selectionChanged.connect(self.save_current)
 
@@ -742,6 +762,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Janela help
         self.help = JanelaHelp()
         self.help.btnVoltar.clicked.connect(self.jan_help)
+
+        # Janela confirmação
+        self.confirm = JanelaConfirm()
+        self.confirm.btnSalvar.clicked.connect(self.save_previous)
+        self.confirm.btnSalvar.clicked.connect(self.jan_confirm)
+        self.confirm.btnSalvar.clicked.connect(self.read_content)
+        self.confirm.btnDescartar.clicked.connect(self.jan_confirm)
+        self.confirm.btnDescartar.clicked.connect(self.read_content)
 
         # Ações da janela principal
         self.txtBusca.textChanged.connect(self.search_text_changed)
@@ -850,6 +878,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             if self.listWidget.isVisible():
                 self.openb.show()
+
+    def jan_confirm(self):
+        if self.confirm.isVisible():
+            self.confirm.hide()
+        else:
+            self.confirm.show()
 
     # def documentWasModified(self):
     #         print('entrou')
@@ -1029,6 +1063,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             recent.remove(filename)
         settings.setValue('recent_files', recent)
 
+    def not_saved(self):
+        """
+        Em caso de alteração no documento, mostra ao usuário que o texto não foi salvo.
+        :return:
+        """
+        if self.txtEditor.document().isModified() and not self.loaded:
+            self.setWindowTitle("NÃO SALVO")
+            self.statusbar.showMessage('NÃO SALVO')
+        if self.loaded:
+            self.loaded = False
 
     # #################################################################################
     # Funções de estilos do documento
@@ -1851,12 +1895,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     # Funções relacionadas ao textEdit
     # #################################################################################
 
+    def confirm_save(self):
+        # Janela de confirmação de salvamento do texto anterior
+        if self.txtEditor.document().isModified() and not self.loaded:
+            self.jan_confirm()
+        else:
+            self.read_content()
+
     def read_content(self):
         """
         Lê o texto armazenado no banco de dados.
         :return:
         """
         self.statusbar.showMessage('')
+        self.setWindowTitle(f'NBooks ({self.db_file})')
         childidx = None
         # self.txtKeywords.setText('')
         if not self.search_mode:
@@ -1864,6 +1916,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             selection = self.treLista.selectionModel().selectedRows()
             selection_x = [self.treLista.model().mapToSource(index) for index in selection]
             item = self.treLista.model().sourceModel().itemFromIndex(selection_x[0])
+            self.previous_item = item
             if item.data() != None:
                 childidx = int(item.data())
             if not item.hasChildren() and item.parent() != None and item.data() != None:
@@ -1874,6 +1927,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 c.execute(comando)
                 resultado = c.fetchone()
                 if resultado:
+                    self.loaded = True
                     self.txtEditor.setText(resultado[0])
                     comando = f"""SELECT keywords FROM child WHERE idx = {childidx}"""
                     c.execute(comando)
@@ -1926,6 +1980,36 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #     conexao.commit()
         conexao.close()
         self.statusbar.showMessage('Arquivo salvo.')
+        # self.setWindowTitle("salvo.")
+        self.setWindowTitle(f'NBooks ({self.db_file})')
+        self.loaded = True
+
+    def save_previous(self):
+        """
+        Salva o conteúdo do textEdit quando foi alterada a seleção na lista
+        :return:
+        """
+        childidx = int(self.previous_item.data())
+        text = self.txtEditor.toHtml()
+        conexao = sqlite3.connect(os.path.join(basedir, self.db_file))
+        c = conexao.cursor()
+        comando = f"""SELECT text FROM contents WHERE rel_child = {childidx}"""
+        c.execute(comando)
+        conteudo = c.fetchone()
+        if conteudo:
+            comando = f"""UPDATE contents SET text = ? WHERE rel_child = {childidx}"""
+            c.execute(comando, (text,))
+            conexao.commit()
+        else:
+            comando = f"""INSERT INTO contents (text, rel_child) VALUES (?, {childidx})"""
+            c.execute(comando, (text,))
+            conexao.commit()
+        conexao.close()
+        self.statusbar.showMessage('Arquivo salvo.')
+        # self.setWindowTitle("salvo.")
+        self.setWindowTitle(f'NBooks ({self.db_file})')
+        self.loaded = True
+
 
     def export_current(self):
         """
