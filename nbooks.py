@@ -67,7 +67,7 @@ settings = QtCore.QSettings()
 # settings.clear()
 
 tmp = settings.value('statusbar', False)
-if tmp:
+if tmp == "yes":
     app.setQuitOnLastWindowClosed(False)
 
 # Classe de comunicação entre a janela de ícone flutuante e a principal
@@ -291,6 +291,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     char_format_normal = QTextCharFormat()
     loaded = True
     previous_item = None
+    tray_message = False
+    load_counter = 0
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         super().setupUi(self)
@@ -622,6 +624,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         print('statusbar', tmp)
         if tmp != 'no':
             self.statusbar_action.setChecked(True)
+            self.tray_message = True
 
         self._format_actions = [
             self.bold_action,
@@ -771,6 +774,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.confirm.btnDescartar.clicked.connect(self.jan_confirm)
         self.confirm.btnDescartar.clicked.connect(self.read_content)
 
+        # Janela confirmação de saída
+        self.confirm_exit = JanelaConfirm()
+        self.confirm_exit.btnSalvar.clicked.connect(self.save_current)
+        self.confirm_exit.btnSalvar.clicked.connect(self.jan_confirm_exit)
+        self.confirm_exit.btnSalvar.clicked.connect(self.close_app)
+        self.confirm_exit.btnDescartar.clicked.connect(self.jan_confirm_exit)
+        self.confirm_exit.btnDescartar.clicked.connect(self.close_app)
+
         # Ações da janela principal
         self.txtBusca.textChanged.connect(self.search_text_changed)
         self.btnLimpa.clicked.connect(lambda: self.txtBusca.setText(''))
@@ -778,7 +789,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.btnLimpa.setToolTip('Limpa a área de pesquisa')
         self.btnSair.clicked.connect(self.bubble)
         self.btnSair.setToolTip('Alterna entre a janela e o ícone flutuante')
-        self.btnSairTotal.clicked.connect(self.close_app)
+        self.btnSairTotal.clicked.connect(self.close)
         self.btnSairTotal.setToolTip('Fecha o programa')
         self.btnShrink.clicked.connect(self.mini)
         self.btnShrink.setToolTip('Mini janela de notas')
@@ -885,6 +896,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.confirm.show()
 
+    def jan_confirm_exit(self):
+        if self.confirm_exit.isVisible():
+            self.confirm_exit.hide()
+        else:
+            self.confirm_exit.show()
+
     # def documentWasModified(self):
     #         print('entrou')
     #         self.window().setWindowModified(True)
@@ -916,11 +933,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             settings.setValue('statusbar', 'yes')
             self.tray.setVisible(True)
             app.setQuitOnLastWindowClosed(False)
+            self.tray_message = True
         else:
             print('desativando icone')
             settings.setValue('statusbar', 'no')
             self.tray.setVisible(False)
             app.setQuitOnLastWindowClosed(True)
+            self.tray_message = False
 
     def reset_default_char(self):
         self.txtEditor.setCurrentCharFormat(self.char_format)
@@ -1068,10 +1087,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         Em caso de alteração no documento, mostra ao usuário que o texto não foi salvo.
         :return:
         """
+        # if self.loaded and self.load_counter <= 2:
+        self.load_counter += 1
         if self.txtEditor.document().isModified() and not self.loaded:
             self.setWindowTitle("NÃO SALVO")
             self.statusbar.showMessage('NÃO SALVO')
-        if self.loaded:
+        if self.loaded and self.load_counter >= 2:
             self.loaded = False
 
     # #################################################################################
@@ -1292,111 +1313,118 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         :return:
         """
         if self.branch_type == 'root':
-            if self.iconpath != None:
-                parent = QStandardItem(self.icon, self.novo.txtName.text())
-                self.filter_proxy_model.sourceModel().appendRow(parent)
-                conexao = sqlite3.connect(os.path.join(basedir, self.db_file))
-                c = conexao.cursor()
-                comando = f"""INSERT INTO parent (icon, desc) VALUES ('{self.iconpath}', '{self.novo.txtName.text()}')"""
-                c.execute(comando)
-                conexao.commit()
-                comando = 'SELECT max(idx) FROM parent'
-                c.execute(comando)
-                dados = c.fetchone()[0]
-                parent.setData(str(dados))
-                conexao.close()
-                ix = self.model.indexFromItem(parent)
-                ix_proxy = self.filter_proxy_model.mapFromSource(ix)
-                self.treLista.selectionModel().select(ix_proxy, QtCore.QItemSelectionModel.ClearAndSelect)
+            if self.iconpath == None:
+                self.iconpath = 'code_2.png'
+                self.icon = QIcon(os.path.join(basedir, 'icons', 'code_2.png'))
+            parent = QStandardItem(self.icon, self.novo.txtName.text())
+            self.filter_proxy_model.sourceModel().appendRow(parent)
+            conexao = sqlite3.connect(os.path.join(basedir, self.db_file))
+            c = conexao.cursor()
+            comando = f"""INSERT INTO parent (icon, desc) VALUES ('{self.iconpath}', '{self.novo.txtName.text()}')"""
+            c.execute(comando)
+            conexao.commit()
+            comando = 'SELECT max(idx) FROM parent'
+            c.execute(comando)
+            dados = c.fetchone()[0]
+            parent.setData(str(dados))
+            conexao.close()
+            ix = self.model.indexFromItem(parent)
+            ix_proxy = self.filter_proxy_model.mapFromSource(ix)
+            self.treLista.selectionModel().select(ix_proxy, QtCore.QItemSelectionModel.ClearAndSelect)
         else:
             if self.treLista.selectionModel().selectedRows() != []:
-                if self.iconpath != None:
-                    selection = self.treLista.selectionModel().selectedRows()
-                    selection_x = [self.treLista.model().mapToSource(index) for index in selection]
-                    parent_item = self.treLista.model().sourceModel().itemFromIndex(selection_x[0])
-                    if parent_item.parent() == None:
-                        child = QStandardItem(self.icon, self.novo.txtName.text())
-                        parent_item.appendRow(child)
-                        child_index = child.index()
-                        conexao = sqlite3.connect(os.path.join(basedir, self.db_file))
-                        c = conexao.cursor()
-                        comando = f"""
-                                    INSERT INTO child (icon, desc, rel_parent)
-                                    VALUES ('{self.iconpath}',
-                                    '{self.novo.txtName.text()}', '{parent_item.data()}')
-                                    """
-                        c.execute(comando)
-                        conexao.commit()
-                        comando = 'SELECT max(idx) FROM child'
-                        c.execute(comando)
-                        dados = c.fetchone()[0]
-                        child.setData(str(dados))
-                        conexao.close()
-                        ix = self.model.indexFromItem(child)
-                        ix_proxy = self.filter_proxy_model.mapFromSource(ix)
-                        self.treLista.selectionModel().select(ix_proxy, QtCore.QItemSelectionModel.ClearAndSelect)
-                        self.treLista.expand(ix_proxy)
-                        self.treLista.expand(ix_proxy.parent())
-                        # ############# DAQUI PRA BAIXO É A TENTATIVA DE INSERÇÃO A PARTIR DA CHILD
-                    else:
-                        parent_of_item = parent_item.parent()
-                        child = QStandardItem(self.icon, self.novo.txtName.text())
-                        parent_of_item.appendRow(child)
-                        child_index = child.index()
-                        conexao = sqlite3.connect(os.path.join(basedir, self.db_file))
-                        c = conexao.cursor()
-                        comando = f"""
-                                                            INSERT INTO child (icon, desc, rel_parent)
-                                                            VALUES ('{self.iconpath}',
-                                                            '{self.novo.txtName.text()}', '{parent_of_item.data()}')
-                                                            """
-                        c.execute(comando)
-                        conexao.commit()
-                        comando = 'SELECT max(idx) FROM child'
-                        c.execute(comando)
-                        dados = c.fetchone()[0]
-                        child.setData(str(dados))
-                        conexao.close()
-                        ix = self.model.indexFromItem(child)
-                        ix_proxy = self.filter_proxy_model.mapFromSource(ix)
-                        self.treLista.selectionModel().select(ix_proxy, QtCore.QItemSelectionModel.ClearAndSelect)
-                        self.treLista.expand(ix_proxy)
-                        self.treLista.expand(ix_proxy.parent())
+                print(self.iconpath)
+                if self.iconpath == None:
+                    self.iconpath = 'code_2.png'
+                    self.icon = QIcon(os.path.join(basedir, 'icons', 'code_2.png'))
+                selection = self.treLista.selectionModel().selectedRows()
+                selection_x = [self.treLista.model().mapToSource(index) for index in selection]
+                parent_item = self.treLista.model().sourceModel().itemFromIndex(selection_x[0])
+                if parent_item.parent() == None:
+                    child = QStandardItem(self.icon, self.novo.txtName.text())
+                    parent_item.appendRow(child)
+                    child_index = child.index()
+                    conexao = sqlite3.connect(os.path.join(basedir, self.db_file))
+                    c = conexao.cursor()
+                    comando = f"""
+                                INSERT INTO child (icon, desc, rel_parent)
+                                VALUES ('{self.iconpath}',
+                                '{self.novo.txtName.text()}', '{parent_item.data()}')
+                                """
+                    c.execute(comando)
+                    conexao.commit()
+                    comando = 'SELECT max(idx) FROM child'
+                    c.execute(comando)
+                    dados = c.fetchone()[0]
+                    child.setData(str(dados))
+                    conexao.close()
+                    ix = self.model.indexFromItem(child)
+                    ix_proxy = self.filter_proxy_model.mapFromSource(ix)
+                    self.treLista.selectionModel().select(ix_proxy, QtCore.QItemSelectionModel.ClearAndSelect)
+                    self.treLista.expand(ix_proxy)
+                    self.treLista.expand(ix_proxy.parent())
+                    # ############# DAQUI PRA BAIXO É A TENTATIVA DE INSERÇÃO A PARTIR DA CHILD
+                else:
+                    parent_of_item = parent_item.parent()
+                    child = QStandardItem(self.icon, self.novo.txtName.text())
+                    parent_of_item.appendRow(child)
+                    child_index = child.index()
+                    conexao = sqlite3.connect(os.path.join(basedir, self.db_file))
+                    c = conexao.cursor()
+                    comando = f"""
+                                INSERT INTO child (icon, desc, rel_parent)
+                                VALUES ('{self.iconpath}',
+                                '{self.novo.txtName.text()}', '{parent_of_item.data()}')
+                                """
+                    c.execute(comando)
+                    conexao.commit()
+                    comando = 'SELECT max(idx) FROM child'
+                    c.execute(comando)
+                    dados = c.fetchone()[0]
+                    child.setData(str(dados))
+                    conexao.close()
+                    ix = self.model.indexFromItem(child)
+                    ix_proxy = self.filter_proxy_model.mapFromSource(ix)
+                    self.treLista.selectionModel().select(ix_proxy, QtCore.QItemSelectionModel.ClearAndSelect)
+                    self.treLista.expand(ix_proxy)
+                    self.treLista.expand(ix_proxy.parent())
 
     def rename_branch(self):
         """
         Renomeia um galho da treeView. Pode ser tanto root quanto child.
         :return:
         """
-        if self.iconpath != None:
-            # for index in sorted(self.treeView.selectionModel().selectedRows()):
-            selection = self.treLista.selectionModel().selectedRows()
-            selection_x = [self.treLista.model().mapToSource(index) for index in selection]
-            item = self.treLista.model().sourceModel().itemFromIndex(selection_x[0])
-            texto = item.text()
-            statustip = int(item.data())
-            newtext = self.rename.txtName.text()
-            item.setIcon(self.icon)
-            item.setText(self.rename.txtName.text())
-            conexao = sqlite3.connect(os.path.join(basedir, self.db_file))
-            c = conexao.cursor()
-            if item.parent() != None:
-                # childstatustip = item.parent().data()
-                comando = f"""
-                            UPDATE child set icon = '{self.iconpath}', desc = '{newtext}'
-                            WHERE idx = '{statustip}'
-                            """
-                c.execute(comando)
-                conexao.commit()
-                conexao.close()
-            else:
-                comando = f"""
-                              UPDATE parent set icon = '{self.iconpath}', desc = '{newtext}'
-                              WHERE idx = {statustip}
-                              """
-                c.execute(comando)
-                conexao.commit()
-                conexao.close()
+        if self.iconpath == None:
+            self.iconpath = 'code_2.png'
+            self.icon = QIcon(os.path.join(basedir, 'icons', 'code_2.png'))
+        # for index in sorted(self.treeView.selectionModel().selectedRows()):
+        selection = self.treLista.selectionModel().selectedRows()
+        selection_x = [self.treLista.model().mapToSource(index) for index in selection]
+        item = self.treLista.model().sourceModel().itemFromIndex(selection_x[0])
+        texto = item.text()
+        statustip = int(item.data())
+        newtext = self.rename.txtName.text()
+        item.setIcon(self.icon)
+        item.setText(self.rename.txtName.text())
+        conexao = sqlite3.connect(os.path.join(basedir, self.db_file))
+        c = conexao.cursor()
+        if item.parent() != None:
+            # childstatustip = item.parent().data()
+            comando = f"""
+                        UPDATE child set icon = '{self.iconpath}', desc = '{newtext}'
+                        WHERE idx = '{statustip}'
+                        """
+            c.execute(comando)
+            conexao.commit()
+            conexao.close()
+        else:
+            comando = f"""
+                          UPDATE parent set icon = '{self.iconpath}', desc = '{newtext}'
+                          WHERE idx = {statustip}
+                          """
+            c.execute(comando)
+            conexao.commit()
+            conexao.close()
 
     def delete_branch(self):
         """
@@ -1907,6 +1935,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         Lê o texto armazenado no banco de dados.
         :return:
         """
+        self.load_counter = 0
+        self.loaded = True
         self.statusbar.showMessage('')
         self.setWindowTitle(f'NBooks ({self.db_file})')
         childidx = None
@@ -2168,25 +2198,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #         ix_proxy = self.filter_proxy_model.mapFromSource(ix)
     #         self.treLista.selectionModel().select(ix_proxy, QtCore.QItemSelectionModel.ClearAndSelect)
 
-    # def closeEvent(self, event):
-    #     """
-    #     Redefine o evento de fechamento do sistema.
-    #     :param event:
-    #     :return:
-    #     """
-    #     selection = self.treLista.selectionModel().selectedRows()
-    #     selection_x = [self.treLista.model().mapToSource(index) for index in selection]
-    #     if selection_x != []:
-    #         # item = self.treLista.model().sourceModel().itemFromIndex(selection_x[0])
-    #         settings.setValue('selected_index', selection_x[0])
-    #
-    #     # Para recuperar o item
-    #     # ix = self.model.indexFromItem(parent)
-    #     # ix_proxy = self.filter_proxy_model.mapFromSource(ix)
-    #     # self.treLista.selectionModel().select(ix_proxy, QtCore.QItemSelectionModel.ClearAndSelect)
-    #     # if self.isVisible():
-    #     #     self.jan_irg()
-    #     event.accept()
+    def closeEvent(self, event):
+        """
+        Redefine o evento de fechamento do sistema.
+        :param event:
+        :return:
+        """
+
+        if self.txtEditor.document().isModified() and not self.loaded:
+            print("Entrou no if")
+            event.ignore()
+            self.jan_confirm_exit()
+        else:
+            print("Entrou no else")
+            event.accept()
+            # super(MainWindow, self).closeEvent(event)
+        tmp = settings.value('statusbar')
+        if tmp == "yes" and self.tray_message:
+            self.tray.showMessage("NBooks","O aplicativo continua rodando na systray. "
+                                           "Para fechar, clique com o botão direito no ícone e escolha Fechar.")
+            self.tray_message = False
+
+
+
 
     def bubble(self):
         """
