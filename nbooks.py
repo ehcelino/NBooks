@@ -782,6 +782,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.confirm_exit.btnDescartar.clicked.connect(self.jan_confirm_exit)
         self.confirm_exit.btnDescartar.clicked.connect(self.close_app)
 
+        # Janela confirmação notebook
+        self.confirm_nb = JanelaConfirm()
+        self.confirm_nb.btnSalvar.clicked.connect(self.save_current)
+        self.confirm_nb.btnSalvar.clicked.connect(self.jan_confirm_nb)
+        self.confirm_nb.btnSalvar.clicked.connect(self.notebook_click)
+        self.confirm_nb.btnDescartar.clicked.connect(self.jan_confirm_nb)
+        self.confirm_nb.btnDescartar.clicked.connect(self.notebook_click)
+
+
         # Ações da janela principal
         self.txtBusca.textChanged.connect(self.search_text_changed)
         self.btnLimpa.clicked.connect(lambda: self.txtBusca.setText(''))
@@ -796,7 +805,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.btnNbs.clicked.connect(self.notebooks_list)
         self.btnNbs.setToolTip('Blocos de notas')
         self.btnNbs.setIcon(QIcon(os.path.join(basedir, 'icons', 'forward.png')))
-        self.listWidget.clicked.connect(self.notebook_click)
+        self.listWidget.clicked.connect(self.confirm_save_nb)
         self.btnAbreNb.clicked.connect(self.jan_openb)
         self.btnAbreNb.setToolTip('Abrir um bloco de notas')
         self.btnNovoNb.clicked.connect(self.jan_nbook)
@@ -901,6 +910,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.confirm_exit.hide()
         else:
             self.confirm_exit.show()
+
+    def jan_confirm_nb(self):
+        if self.confirm_nb.isVisible():
+            self.confirm_nb.hide()
+        else:
+            self.confirm_nb.show()
 
     # def documentWasModified(self):
     #         print('entrou')
@@ -1570,6 +1585,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.desc.setData(3, addr)
             self.desc.setData(4, idx)
             # self.listWidget.addItem(desc)
+
+    def confirm_save_nb(self):
+        # Janela de confirmação de salvamento do texto anterior
+        if self.txtEditor.document().isModified() and not self.loaded:
+            self.jan_confirm_nb()
+        else:
+            self.notebook_click()
+
 
     def notebook_click(self):
         """
