@@ -1896,6 +1896,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         conexao.close()
         self.read_database()
 
+
+    def clear_error(self):
+        """
+        Recupera o programa de um erro no arquivo .nbook
+        :return:
+        """
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setText("Arquivo inválido.")
+        msg.setWindowTitle("Atenção")
+        msg.setStandardButtons(QMessageBox.Ok)
+        retval = msg.exec_()
+        self.notebook_delete()
+        self.notebook_click()
+        # self.db_file = os.path.join('db', 'database.nbook')
+        # settings.setValue('database', self.db_file)
+        # self.setWindowTitle(f'NBooks ({self.db_file})')
+        # self.lblNbook.setText(self.listWidget.currentItem().data(2))
+        # self.read_database()
+        # self.listWidget.setCurrentItem()
+
     def read_database(self):
         """
         Lê o banco de dados qtext atual e popula a árvore.
@@ -1921,8 +1942,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         print('read_database - listando de:', self.db_file)
         conexao = sqlite3.connect(os.path.join(basedir, self.db_file))
         c = conexao.cursor()
-        comando = """SELECT idx, icon, desc FROM parent"""
-        c.execute(comando)
+        try:
+            comando = """SELECT idx, icon, desc FROM parent"""
+            c.execute(comando)
+        except:
+            return self.clear_error()
         parents = c.fetchall()
         comando = """SELECT idx, icon, desc, rel_parent, keywords FROM child"""
         c.execute(comando)
